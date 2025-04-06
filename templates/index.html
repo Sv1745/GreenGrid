@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenGrid AI 2.0</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script> <!-- For 3D simulation placeholder -->
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>GreenGrid AI 2.0</h1>
+            <p class="subtitle">Revolutionizing Climate Resilience with AI-Powered Microgrids</p>
+        </header>
+        <div class="main-content">
+            <div class="microgrid-form">
+                <h2>Design Your Microgrid</h2>
+                <form id="microgridForm">
+                    <div class="input-group">
+                        <input type="number" id="communitySize" placeholder="Community Size (households)" required>
+                        <span class="input-icon">🏘️</span>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="energyNeeds" placeholder="Daily Energy Needs (kWh)" required>
+                        <span class="input-icon">⚡</span>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="locationData" placeholder="Location Data (e.g., tropical, moderate shade)" required>
+                        <span class="input-icon">🌍</span>
+                    </div>
+                    <button type="submit" class="optimize-btn">Optimize Now</button>
+                </form>
+                <div id="result" class="result"></div>
+                <div id="challenge" class="challenge"></div>
+            </div>
+            <div class="dashboard">
+                <h2>Community Impact Hub</h2>
+                <div class="stats">
+                    <p id="totalSavings" class="stat-item">Total Carbon Savings: Loading...</p>
+                    <p id="avgResilience" class="stat-item">Average Resilience Score: Loading...</p>
+                    <p id="totalCredits" class="stat-item">Total Trade Credits: Loading...</p>
+                </div>
+                <h3>Resilience Leaderboard</h3>
+                <ul id="leaderboard" class="leaderboard"></ul>
+                <div id="vr-simulator" class="vr-simulator">VR Simulator (Placeholder)</div>
+            </div>
+        </div>
+        <footer class="footer">
+            <p>Powered by GreenGrid Pioneers | © 2025</p>
+        </footer>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
