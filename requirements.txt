@@ -1,2 +1,2 @@
 Flask==2.3.2
-google-generative-ai==0.3.2  # For Gemini API
+google-generativeai
