@@ -2,16 +2,19 @@ from flask import Flask, render_template, request, jsonify
 import sqlite3
 import random
 import google.generativeai as genai
+import json 
 app = Flask(__name__)
 
 genai.configure(api_key="AIzaSyANl9jj_tbPtOIdCqykobiaI3Dsubbk8nM")  # Replace YOUR_API_KEY with the actual key
-model = genai.GenerativeModel("gemini-2.0-flash")
+gemini_model = genai.GenerativeModel("gemini-2.0-flash")
 
 # Initialize SQLite database
 def init_db():
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS microgrids
+    # Drop existing table to ensure schema update ( caution: deletes data )
+    c.execute("DROP TABLE IF EXISTS microgrids")
+    c.execute('''CREATE TABLE microgrids
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   community_size INTEGER,
                   energy_needs REAL,
@@ -21,19 +24,19 @@ def init_db():
                   resilience_score REAL,
                   maintenance_schedule TEXT,
                   trade_credits REAL,
+                  budget REAL,
                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
 
-# Gemini-powered optimization with debugging
-def optimize_microgrid(community_size, energy_needs, location_data):
-    print(f"Optimizing for: community_size={community_size}, energy_needs={energy_needs}, location_data={location_data}")
-    prompt = f"Optimize a microgrid for a community of {community_size} households with {energy_needs} kWh daily needs, considering {location_data} (weather, soil, vegetation). Provide solar_capacity (kW), battery_size (kWh), carbon_savings (kg CO2e), resilience_score (0-100%), maintenance_schedule (days), and trade_credits (kWh) as a JSON object."
+# Gemini-powered optimization with economic and local data
+def optimize_microgrid(community_size, energy_needs, location_data, budget=None):
+    print(f"Optimizing for: community_size={community_size}, energy_needs={energy_needs}, location_data={location_data}, budget={budget}")
+    prompt = f"Optimize a microgrid for a community of {community_size} households with {energy_needs} kWh daily needs, considering {location_data} (weather, soil, vegetation). If budget is provided ({budget} USD), prioritize cost-effective solutions. Return a JSON object with: solar_capacity (kW), battery_size (kWh), carbon_savings (kg CO2e), resilience_score (0-100%), maintenance_schedule (days), trade_credits (kWh)."
     try:
         response = gemini_model.generate_content(prompt)
         print(f"Gemini response: {response.text}")
-        import json
-        result = json.loads(response.text)  # Assuming Gemini returns JSON
+        result = json.loads(response.text.strip())  # Strip whitespace
         return (result.get('solar_capacity', energy_needs * 1.2),
                 result.get('battery_size', energy_needs * 0.5),
                 result.get('carbon_savings', community_size * 0.8 * energy_needs),
@@ -47,10 +50,10 @@ def optimize_microgrid(community_size, energy_needs, location_data):
 
 # Gemini-powered gamification challenge
 def generate_challenge(community_size, resilience_score):
-    prompt = f"Generate a climate resilience challenge for a community of {community_size} households with a resilience_score of {resilience_score}%. Include a goal, reward (Resilience Points), and deadline (days). Return as JSON."
+    prompt = f"Generate a climate resilience challenge for a community of {community_size} households with a resilience_score of {resilience_score}%. Include a goal, reward (Resilience Points), and deadline (days). Return as JSON with strict formatting."
     try:
         response = gemini_model.generate_content(prompt)
-        return json.loads(response.text)
+        return json.loads(response.text.strip())
     except (json.JSONDecodeError, AttributeError) as e:
         print(f"Challenge generation error: {e}, using default")
         return {"goal": "Reduce energy use by 10%", "reward": 100, "deadline": 7}
@@ -69,18 +72,19 @@ def optimize():
     community_size = int(data.get('communitySize', 0))
     energy_needs = float(data.get('energyNeeds', 0))
     location_data = data.get('locationData', 'tropical climate, moderate shade')
+    budget = data.get('budget', None)  # Optional economic input
 
     if not community_size or not energy_needs:
         print("Invalid input data")
         return jsonify({"error": "Community size and energy needs are required"}), 400
 
-    solar_capacity, battery_size, carbon_savings, resilience_score, maintenance_schedule, trade_credits = optimize_microgrid(community_size, energy_needs, location_data)
+    solar_capacity, battery_size, carbon_savings, resilience_score, maintenance_schedule, trade_credits = optimize_microgrid(community_size, energy_needs, location_data, budget)
     challenge = generate_challenge(community_size, resilience_score)
 
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute("INSERT INTO microgrids (community_size, energy_needs, solar_capacity, battery_size, carbon_savings, resilience_score, maintenance_schedule, trade_credits) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-              (community_size, energy_needs, solar_capacity, battery_size, carbon_savings, resilience_score, maintenance_schedule, trade_credits))
+    c.execute("INSERT INTO microgrids (community_size, energy_needs, solar_capacity, battery_size, carbon_savings, resilience_score, maintenance_schedule, trade_credits, budget) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              (community_size, energy_needs, solar_capacity, battery_size, carbon_savings, resilience_score, maintenance_schedule, trade_credits, budget))
     conn.commit()
     conn.close()
 
@@ -100,12 +104,16 @@ def community_stats():
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute("SELECT SUM(carbon_savings), AVG(resilience_score), SUM(trade_credits) FROM microgrids")
-    total_savings, avg_resilience, total_credits = c.fetchone()
+    result = c.fetchone()
+    if result[0] is None:  # Handle empty table
+        total_savings, avg_resilience, total_credits = 0, 0, 0
+    else:
+        total_savings, avg_resilience, total_credits = result
     conn.close()
     return jsonify({
-        'totalSavings': total_savings or 0,
-        'avgResilience': avg_resilience or 0,
-        'totalCredits': total_credits or 0
+        'totalSavings': total_savings,
+        'avgResilience': avg_resilience,
+        'totalCredits': total_credits
     })
 
 @app.route('/leaderboard')
