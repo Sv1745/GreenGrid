@@ -8,7 +8,7 @@ import os
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
 # Configure Gemini API
-genai.configure(api_key="AIzaSyANl9jj_tbPtOIdCqykobiaI3Dsubbk8nM")
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 gemini_model = genai.GenerativeModel("gemini-2.0-flash")
 
 # Initialize SQLite database
