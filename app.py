@@ -1,36 +1,25 @@
 from flask import Flask, render_template, request, jsonify
-import sqlite3
+from supabase import create_client, Client
 import random
 import google.generativeai as genai
 import json
 import os
+from dotenv import load_dotenv
 
+# Load .env
+load_dotenv()
+
+# Flask app config
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
-# Configure Gemini API
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+# Supabase config
+supabase_url = "https://yhqdszazpxmcetpxnyjx.supabase.co"
+supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlocWRzemF6cHhtY2V0cHhueWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyNTQwOTgsImV4cCI6MjA1OTgzMDA5OH0.5CtJVKBcnAmqhhdOx-EnS61NdR-WPq_5l-NFAEwzhqM"
+supabase: Client = create_client(supabase_url, supabase_key)
 
-# Initialize SQLite database
-def init_db():
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute("DROP TABLE IF EXISTS microgrids")
-    c.execute('''CREATE TABLE microgrids (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        community_size INTEGER,
-        energy_needs REAL,
-        solar_capacity REAL,
-        battery_size REAL,
-        carbon_savings REAL,
-        resilience_score REAL,
-        maintenance_schedule TEXT,
-        trade_credits REAL,
-        budget REAL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    conn.commit()
-    conn.close()
+# Gemini API config
+genai.configure(api_key="AIzaSyANl9jj_tbPtOIdCqykobiaI3Dsubbk8nM")
+gemini_model = genai.GenerativeModel("gemini-2.0-flash")
 
 # Gemini-powered optimization
 def optimize_microgrid(community_size, energy_needs, location_data, budget=None):
@@ -101,12 +90,21 @@ def optimize():
     )
     challenge = generate_challenge(community_size, resilience_score)
 
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute("INSERT INTO microgrids (community_size, energy_needs, solar_capacity, battery_size, carbon_savings, resilience_score, maintenance_schedule, trade_credits, budget) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-              (community_size, energy_needs, solar_capacity, battery_size, carbon_savings, resilience_score, maintenance_schedule, trade_credits, budget))
-    conn.commit()
-    conn.close()
+    # Insert into Supabase
+    result = supabase.table("microgrids").insert({
+        "community_size": community_size,
+        "energy_needs": energy_needs,
+        "solar_capacity": solar_capacity,
+        "battery_size": battery_size,
+        "carbon_savings": carbon_savings,
+        "resilience_score": resilience_score,
+        "maintenance_schedule": maintenance_schedule,
+        "trade_credits": trade_credits,
+        "budget": budget
+    }).execute()
+
+    if result.get("status_code", 200) >= 400:
+        return jsonify({"error": "Failed to insert into Supabase"}), 500
 
     return jsonify({
         'solarCapacity': solar_capacity,
@@ -120,12 +118,20 @@ def optimize():
 
 @app.route('/community-stats')
 def community_stats():
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute("SELECT SUM(carbon_savings), AVG(resilience_score), SUM(trade_credits) FROM microgrids")
-    result = c.fetchone()
-    conn.close()
-    total_savings, avg_resilience, total_credits = result if result[0] else (0, 0, 0)
+    response = supabase.table("microgrids").select("carbon_savings, resilience_score, trade_credits").execute()
+    rows = response.data if response and response.data else []
+
+    if not rows:
+        return jsonify({
+            'totalSavings': 0,
+            'avgResilience': 0,
+            'totalCredits': 0
+        })
+
+    total_savings = sum(row['carbon_savings'] for row in rows)
+    avg_resilience = sum(row['resilience_score'] for row in rows) / len(rows)
+    total_credits = sum(row['trade_credits'] for row in rows)
+
     return jsonify({
         'totalSavings': total_savings,
         'avgResilience': avg_resilience,
@@ -134,13 +140,14 @@ def community_stats():
 
 @app.route('/leaderboard')
 def leaderboard():
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute("SELECT community_size, resilience_score FROM microgrids ORDER BY resilience_score DESC LIMIT 5")
-    leaderboard = [{"size": row[0], "score": row[1]} for row in c.fetchall()]
-    conn.close()
+    response = supabase.table("microgrids") \
+        .select("community_size, resilience_score") \
+        .order("resilience_score", desc=True) \
+        .limit(5).execute()
+
+    leaderboard = [{"size": row['community_size'], "score": row['resilience_score']} for row in response.data]
     return jsonify(leaderboard)
 
-# Required for Vercel to work
-init_db()
-app = app
+# No need for init_db() in Supabase setup
+if __name__ == '__main__':
+    app.run(debug=True)
