@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Flask app config
-app = Flask(__name__, template_folder="../templates", static_folder="../static")
+app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # Supabase config
 supabase_url = "https://yhqdszazpxmcetpxnyjx.supabase.co"
