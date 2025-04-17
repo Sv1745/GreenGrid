@@ -13,12 +13,13 @@ load_dotenv()
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # Supabase config
-supabase_url = "https://yhqdszazpxmcetpxnyjx.supabase.co"
-supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlocWRzemF6cHhtY2V0cHhueWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyNTQwOTgsImV4cCI6MjA1OTgzMDA5OH0.5CtJVKBcnAmqhhdOx-EnS61NdR-WPq_5l-NFAEwzhqM"
+supabase_url = os.getenv("SUPABASE_URL", "https://yhqdszazpxmcetpxnyjx.supabase.co")
+supabase_key = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlocWRzemF6cHhtY2V0cHhueWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyNTQwOTgsImV4cCI6MjA1OTgzMDA5OH0.5CtJVKBcnAmqhhdOx-EnS61NdR-WPq_5l-NFAEwzhqM")
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # Gemini API config
-genai.configure(api_key="AIzaSyANl9jj_tbPtOIdCqykobiaI3Dsubbk8nM")
+gemini_api_key = os.getenv("GEMINI_API_KEY", "AIzaSyANl9jj_tbPtOIdCqykobiaI3Dsubbk8nM")
+genai.configure(api_key=gemini_api_key)
 gemini_model = genai.GenerativeModel("gemini-2.0-flash")
 
 # Gemini-powered optimization
@@ -148,6 +149,6 @@ def leaderboard():
     leaderboard = [{"size": row['community_size'], "score": row['resilience_score']} for row in response.data]
     return jsonify(leaderboard)
 
-# No need for init_db() in Supabase setup
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.getenv("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
