@@ -11,6 +11,8 @@ load_dotenv()
 
 # Flask app config
 app = Flask(__name__, template_folder="templates", static_folder="static")
+app.config['ENV'] = 'production'
+app.config['DEBUG'] = False
 
 # Supabase config
 supabase_url = os.getenv("SUPABASE_URL", "https://yhqdszazpxmcetpxnyjx.supabase.co")
@@ -153,5 +155,6 @@ def leaderboard():
     return jsonify(leaderboard)
 
 if __name__ == '__main__':
+    # This block will only run in development
     port = int(os.getenv("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
