@@ -17,10 +17,7 @@ app.config['DEBUG'] = False
 # Supabase config
 supabase_url = os.getenv("SUPABASE_URL", "https://yhqdszazpxmcetpxnyjx.supabase.co")
 supabase_key = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlocWRzemF6cHhtY2V0cHhueWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyNTQwOTgsImV4cCI6MjA1OTgzMDA5OH0.5CtJVKBcnAmqhhdOx-EnS61NdR-WPq_5l-NFAEwzhqM")
-supabase: Client = create_client(supabase_url, supabase_key, {
-    'auto_refresh_token': False,
-    'persist_session': False
-})
+supabase: Client = create_client(supabase_url, supabase_key)
 
 # Gemini API config
 gemini_api_key = os.getenv("GEMINI_API_KEY", "AIzaSyANl9jj_tbPtOIdCqykobiaI3Dsubbk8nM")
